@@ -13,7 +13,7 @@ class XMLRowFinder
 
     @debug = debug
 
-    @doc = if raws =~ /^http/ then
+    doc = if raws =~ /^http/ then
 
       nki = Nokorexi.new(url=raws) do |doc1|
         doc1.xpath('//*[@onclick]').each do |e|
@@ -32,9 +32,11 @@ class XMLRowFinder
       Rexle.new(raws)
     end
 
+    @doc = Rexle.new(doc.xml)
+
     a = []
 
-    @doc.root.each_recursive do |e|
+    doc.root.each_recursive do |e|
       e.attributes.delete
       a << e.backtrack.to_xpath
     end
@@ -52,7 +54,7 @@ class XMLRowFinder
 
     # using Nokogiri since Rexle has a bug with xpath predicates
     #
-    @doc2 = Nokogiri::XML(@doc.root.xml)
+    @doc2 = Nokogiri::XML(doc.root.xml)
 
     a5 = a4[0..-2].map do |xpath2|
       [@doc2.xpath(xpath2).length, xpath2]
@@ -65,11 +67,11 @@ class XMLRowFinder
     # find the container element
     xpath = @xpath[/^[^\[]+/]
     axpath = xpath.split('/')
-    e = @doc.element xpath
+    e = doc.element xpath
 
     until (e.xml.include? last_row) do
       axpath.pop
-      e = @doc.element axpath.join('/')
+      e = doc.element axpath.join('/')
     end
 
     @cont_xpath = axpath.join('/')
@@ -77,10 +79,9 @@ class XMLRowFinder
   end
 
   # returns the container element for all rows
-  # object returned: Rexle::Element
   #
   def body()
-    @doc.element @cont_xpath
+    Rexle.new(@doc.element(@cont_xpath).xml)
   end
 
   # returns the xpath pointing to the container element for all rows
@@ -88,7 +89,6 @@ class XMLRowFinder
   def body_xpath()
     @cont_xpath
   end
-
 
   # returns rows
   # object returned: An array of Nokogiri XML Element object
