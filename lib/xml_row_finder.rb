@@ -15,6 +15,7 @@ class XMLRowFinder
 
     @debug = debug
     doc = Rexle.new(s)
+    @doc2 = Document.new(s)
 
     a = []
 
@@ -23,51 +24,31 @@ class XMLRowFinder
       a << e.backtrack.to_xpath
     end
 
-    a2 = a.select{ |e| a.count(e) > 1 }.map {|x| x.split('/')}.uniq
+    @to_a = a2 = a.map {|e| [a.count(e), e] }
+    xpath = a2.max_by(&:first).last
 
-    # remove parent nodes on the same branch
-    #
-    a2.reject!.with_index do |x,i| 
-      next if i == a2.length-1
-      x == a2[i+1][0..-2]
+    a3 = xpath.split('/')
+    a4 = [xpath]
+    p1 = []
+
+    until (a3.length < 1) do
+      p1 << a3.pop; a4 << a3.join('/') + "[%s]" % p1.reverse.join('/')
     end
 
-    # remove elements from rows which only exist once in the document
-    #
-    a3 = a2.map do |row|
-      row.reject do |x|
-        found = doc.root.xpath('//' + x)
-        found.length < 2
-      end
+    a5 = a4[0..-2].map do |xpath2|
+      [XPath.match(@doc2, xpath2).length, xpath2]
     end
 
-    # add parent node to the row as a reference for the xpath
-    #
-    a4 = a3.map.with_index do |row,i|
-      a2[i][-(row.length+1)..-1]
-    end
+    @xpath = a5.reverse.detect {|num, xpath2| num > 1}.last
 
-    # find the parent node attributes
-    #
-    @to_a = a4.map do |col|
+  end
 
-      # currently using REXML for this XPath since there is a bug in 
-      #   Rexle when attempting the following
-      # 
-      doc2 = Document.new(s)
-      xpath = "//%s[%s]" % [col[0], col[1..-1].join('/')]
-      puts 'xpath: ' + xpath.inspect if @debug
-      r = XPath.first(doc2, xpath)
-      xpath_a = BacktrackXPath.new(r).to_xpath
+  def rows()
+    XPath.match(@doc2, @xpath)
+  end
 
-      if col.length >= 3
-        "%s/%s[%s]" % [xpath_a, col[1], col[2..-1].join('/')]
-      else
-        "%s/%s" % [xpath_a, col[1]]
-      end
-    end
-    
+  def to_xpath()
+    @xpath
   end
 
 end
-

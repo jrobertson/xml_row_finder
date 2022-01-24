@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = 'xml_row_finder'
-  s.version = '0.1.0'
+  s.version = '0.2.0'
   s.summary = 'Attempts to find repeating rows in XHTML and returns the associated xpath.'
   s.authors = ['James Robertson']
   s.files = Dir['lib/xml_row_finder.rb']
