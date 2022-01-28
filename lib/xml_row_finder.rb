@@ -13,26 +13,9 @@ class XMLRowFinder
 
     @debug = debug
 
-    doc = if raws =~ /^http/ then
+    doc = Nokorexi.new(raws, filter: true).to_doc
 
-      nki = Nokorexi.new(url=raws) do |doc1|
-        doc1.xpath('//*[@onclick]').each do |e|
-          e.attributes['onclick'].value = ''
-        end
-
-        doc1.xpath('//*[@onmousedown]').each do |e|
-          e.attributes['onmousedown'].value = ''
-        end
-
-      end
-
-      nki.to_doc
-
-    else
-      Rexle.new(raws)
-    end
-
-    @doc = Rexle.new(doc.xml)
+    @doc = Rexle.new(doc.root.xml)
 
     a = []
 
@@ -60,18 +43,26 @@ class XMLRowFinder
       [@doc2.xpath(xpath2).length, xpath2]
     end
 
-    @xpath = a5.reverse.detect {|num, xpath2| num > 1}.last
+    puts 'a5: ' + a5.inspect if @debug
+    rows_xpath = a5.reverse.detect {|num, xpath2| num > 1}.last
+    doc3 = Document.new @doc.root.xml
+    @rows = XPath.match(doc3, rows_xpath)
+    @xpath = rows_xpath
+    #@xpath = BacktrackXPath.new(@rows.first).to_xpath.gsub("[@class='']",'')
 
-    last_row = @doc2.xpath(@xpath).last
+    last_row = XPath.match(doc3, @xpath).last
+    puts '@xpath: ' + @xpath.inspect
 
     # find the container element
     xpath = @xpath[/^[^\[]+/]
     axpath = xpath.split('/')
-    e = doc.element xpath
 
-    until (e.xml.include? last_row) do
+    e = XPath.first(doc3, xpath)
+    puts 'e: ' + e.to_s
+
+    until (e.nil? or e.to_s.include?(last_row.to_s)) do
       axpath.pop
-      e = doc.element axpath.join('/')
+      e = XPath.first(doc3, axpath.join('/'))
     end
 
     @cont_xpath = axpath.join('/')
@@ -94,7 +85,7 @@ class XMLRowFinder
   # object returned: An array of Nokogiri XML Element object
   #
   def rows()
-    @doc2.xpath @xpath
+    @rows
   end
 
   # returns the xpath pointing to the rows
